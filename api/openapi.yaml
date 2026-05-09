@@ -1,0 +1,2262 @@
+openapi: 3.0.3
+info:
+  description: "Public client API for Finder and Probe workflows. This spec is generated\
+    \ from the FastAPI app, then narrowed to the supported bearer-authenticated routes\
+    \ used by SDKs and the API reference."
+  title: Relentless Identity API
+  version: 1.0.0
+servers:
+- description: Production
+  url: https://api.relentlessidentity.com
+security:
+- bearerAuth: []
+tags:
+- description: "Inspect token status, usage balance, request history, and job history."
+  name: Account
+- description: Resolve the most likely work email for a person at a known domain.
+  name: Finder
+- description: Verify one or many known email addresses.
+  name: Probe
+- description: "Queue asynchronous Finder and Probe Batch work, then inspect job status\
+    \ and results."
+  name: Jobs
+paths:
+  /client/token:
+    get:
+      description: Validate the current bearer token and return its active claims.
+      operationId: getTokenStatus
+      parameters: []
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientTokenStatusResponse"
+          description: Bearer token status
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Missing or invalid bearer token
+        "402":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Insufficient usage balance for that request
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: The bearer token does not include the required scope
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Request rate limit exceeded
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Unexpected backend failure
+      security:
+      - bearerAuth: []
+      summary: Inspect the current bearer token
+      tags:
+      - Account
+  /client/usage:
+    get:
+      description: "Return the current account usage, free-tier limits, and paid capacity\
+        \ details for the authenticated user."
+      operationId: getUsage
+      parameters: []
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientUsageResponse"
+          description: Usage summary
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Missing or invalid bearer token
+        "402":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Insufficient usage balance for that request
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: The bearer token does not include the required scope
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Request rate limit exceeded
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Unexpected backend failure
+      security:
+      - bearerAuth: []
+      summary: Get current usage and limits
+      tags:
+      - Account
+  /client/history:
+    get:
+      description: Return the authenticated user's latest request history with pagination
+        and optional filters.
+      operationId: getRequestHistory
+      parameters:
+      - description: Page number starting at 1.
+        explode: true
+        in: query
+        name: page
+        required: false
+        schema:
+          default: 1
+          description: Page number starting at 1.
+          minimum: 1
+          title: Page
+          type: integer
+        style: form
+      - description: Number of history rows per page. Maximum 25.
+        explode: true
+        in: query
+        name: page_size
+        required: false
+        schema:
+          default: 25
+          description: Number of history rows per page. Maximum 25.
+          maximum: 25
+          minimum: 1
+          title: Page Size
+          type: integer
+        style: form
+      - description: Optional request-type filter.
+        explode: true
+        in: query
+        name: request_type
+        required: false
+        schema:
+          enum:
+          - finder
+          - probe
+          nullable: true
+          type: string
+        style: form
+      - description: Optional deliverability-state filter.
+        explode: true
+        in: query
+        name: state
+        required: false
+        schema:
+          enum:
+          - deliverable
+          - undeliverable
+          nullable: true
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientRequestHistoryPageResponse"
+          description: Paginated request history
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Missing or invalid bearer token
+        "402":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Insufficient usage balance for that request
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: The bearer token does not include the required scope
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Request rate limit exceeded
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Unexpected backend failure
+      security:
+      - bearerAuth: []
+      summary: Get paginated request history
+      tags:
+      - Account
+  /client/jobs:
+    get:
+      description: Return the authenticated user's paginated background job history.
+      operationId: listJobs
+      parameters:
+      - explode: true
+        in: query
+        name: page
+        required: false
+        schema:
+          default: 1
+          minimum: 1
+          title: Page
+          type: integer
+        style: form
+      - explode: true
+        in: query
+        name: page_size
+        required: false
+        schema:
+          default: 25
+          maximum: 100
+          minimum: 1
+          title: Page Size
+          type: integer
+        style: form
+      - explode: true
+        in: query
+        name: job_type
+        required: false
+        schema:
+          enum:
+          - finder_batch
+          - probe_batch
+          nullable: true
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: status
+        required: false
+        schema:
+          enum:
+          - queued
+          - processing
+          - completed
+          - failed
+          - canceled
+          nullable: true
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientBackgroundJobPageResponse"
+          description: Paginated background jobs
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Missing or invalid bearer token
+        "402":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Insufficient usage balance for that request
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: The bearer token does not include the required scope
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Request rate limit exceeded
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Unexpected backend failure
+      security:
+      - bearerAuth: []
+      summary: List background jobs
+      tags:
+      - Jobs
+  /client/jobs/{job_id}:
+    get:
+      description: Return the current status and paginated results for one background
+        job.
+      operationId: getJob
+      parameters:
+      - explode: false
+        in: path
+        name: job_id
+        required: true
+        schema:
+          title: Job Id
+          type: string
+        style: simple
+      - explode: true
+        in: query
+        name: page
+        required: false
+        schema:
+          default: 1
+          minimum: 1
+          title: Page
+          type: integer
+        style: form
+      - explode: true
+        in: query
+        name: page_size
+        required: false
+        schema:
+          default: 50
+          maximum: 100
+          minimum: 1
+          title: Page Size
+          type: integer
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientBackgroundJobDetailResponse"
+          description: Background job detail
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Missing or invalid bearer token
+        "402":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Insufficient usage balance for that request
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: The bearer token does not include the required scope
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Request rate limit exceeded
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Unexpected backend failure
+      security:
+      - bearerAuth: []
+      summary: Get background job
+      tags:
+      - Jobs
+  /client/jobs/{job_id}/inputs.txt:
+    get:
+      description: Return the original background job inputs as plain text when the
+        payload is still retained.
+      operationId: getJobInputsText
+      parameters:
+      - explode: false
+        in: path
+        name: job_id
+        required: true
+        schema:
+          title: Job Id
+          type: string
+        style: simple
+      - explode: false
+        in: header
+        name: if-none-match
+        required: false
+        schema:
+          nullable: true
+          type: string
+        style: simple
+      - explode: false
+        in: header
+        name: if-modified-since
+        required: false
+        schema:
+          nullable: true
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            text/plain:
+              schema:
+                type: string
+          description: Background job inputs
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Missing or invalid bearer token
+        "402":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Insufficient usage balance for that request
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: The bearer token does not include the required scope
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Request rate limit exceeded
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Unexpected backend failure
+      security:
+      - bearerAuth: []
+      summary: Download job inputs
+      tags:
+      - Jobs
+  /client/jobs/{job_id}/results.txt:
+    get:
+      description: Return the canonical background job results in a readable plain-text
+        format.
+      operationId: getJobResultsText
+      parameters:
+      - explode: false
+        in: path
+        name: job_id
+        required: true
+        schema:
+          title: Job Id
+          type: string
+        style: simple
+      - explode: false
+        in: header
+        name: if-none-match
+        required: false
+        schema:
+          nullable: true
+          type: string
+        style: simple
+      - explode: false
+        in: header
+        name: if-modified-since
+        required: false
+        schema:
+          nullable: true
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            text/plain:
+              schema:
+                type: string
+          description: Background job results text
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Missing or invalid bearer token
+        "402":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Insufficient usage balance for that request
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: The bearer token does not include the required scope
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Request rate limit exceeded
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Unexpected backend failure
+      security:
+      - bearerAuth: []
+      summary: Download job results as text
+      tags:
+      - Jobs
+  /client/jobs/{job_id}/results.json:
+    get:
+      description: Return the canonical immutable background job results artifact
+        as JSON.
+      operationId: getJobResultsJson
+      parameters:
+      - explode: false
+        in: path
+        name: job_id
+        required: true
+        schema:
+          title: Job Id
+          type: string
+        style: simple
+      - explode: false
+        in: header
+        name: if-none-match
+        required: false
+        schema:
+          nullable: true
+          type: string
+        style: simple
+      - explode: false
+        in: header
+        name: if-modified-since
+        required: false
+        schema:
+          nullable: true
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Background job results artifact
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Missing or invalid bearer token
+        "402":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Insufficient usage balance for that request
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: The bearer token does not include the required scope
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Request rate limit exceeded
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Unexpected backend failure
+      security:
+      - bearerAuth: []
+      summary: Download job results as JSON
+      tags:
+      - Jobs
+  /client/jobs/finder:
+    post:
+      description: Queue a background finder batch job with an optional deadline and
+        callback URL.
+      operationId: scheduleFinderBatch
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinderBatchJobRequest"
+        required: true
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientBackgroundJobResponse"
+          description: Successful Response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Missing or invalid bearer token
+        "402":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Insufficient usage balance for that request
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: The bearer token does not include the required scope
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Request rate limit exceeded
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Unexpected backend failure
+      security:
+      - bearerAuth: []
+      summary: Schedule a finder batch
+      tags:
+      - Jobs
+  /client/jobs/probe-batch:
+    post:
+      description: Queue a background probe batch job with an optional deadline and
+        callback URL.
+      operationId: scheduleProbeBatch
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProbeBatchJobBackgroundRequest"
+        required: true
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientBackgroundJobResponse"
+          description: Successful Response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Missing or invalid bearer token
+        "402":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Insufficient usage balance for that request
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: The bearer token does not include the required scope
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Request rate limit exceeded
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Unexpected backend failure
+      security:
+      - bearerAuth: []
+      summary: Schedule a probe batch
+      tags:
+      - Jobs
+  /client/attempt:
+    post:
+      description: Send a full name and company domain to resolve the most likely
+        verified work email.
+      operationId: finderAttempt
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinderRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientFinderResponse"
+          description: Finder response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Missing or invalid bearer token
+        "402":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Insufficient usage balance for that request
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: The bearer token does not include the required scope
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Synchronous verification is temporarily at capacity
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Unexpected backend failure
+      security:
+      - bearerAuth: []
+      summary: Find a work email
+      tags:
+      - Finder
+  /client/probe:
+    post:
+      description: Send a single email address to verify it directly.
+      operationId: probeEmail
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProbeRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientIdentityResponse"
+          description: Probe response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Missing or invalid bearer token
+        "402":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Insufficient usage balance for that request
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: The bearer token does not include the required scope
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Synchronous verification is temporarily at capacity
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Unexpected backend failure
+      security:
+      - bearerAuth: []
+      summary: Verify an email address
+      tags:
+      - Probe
+  /client/probe/batch:
+    post:
+      description: Send many known email addresses and receive compact per-item identity
+        results plus a batch summary.
+      operationId: probeBatch
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProbeBatchRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientBatchIdentityResponse"
+          description: Batch probe response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Missing or invalid bearer token
+        "402":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Insufficient usage balance for that request
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: The bearer token does not include the required scope
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Synchronous verification is temporarily at capacity
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Unexpected backend failure
+      security:
+      - bearerAuth: []
+      summary: Verify many email addresses
+      tags:
+      - Probe
+components:
+  schemas:
+    AliasInfo:
+      description: Alias information when email is resolved to a different address.
+      example:
+        original: original
+        resolved: resolved
+      properties:
+        original:
+          nullable: true
+          type: string
+        resolved:
+          nullable: true
+          type: string
+      title: AliasInfo
+      type: object
+    BatchSummary:
+      additionalProperties: false
+      example:
+        unique_domains: 0
+        total: 0
+        found: 0
+        not_found: 0
+        errors: 0
+      properties:
+        total:
+          description: Total number of requested items.
+          minimum: 0
+          type: integer
+        found:
+          description: Items that resolved to a positive deliverable result.
+          minimum: 0
+          type: integer
+        not_found:
+          description: Items that completed cleanly with a negative result.
+          minimum: 0
+          type: integer
+        errors:
+          description: Items that ended with an operational verification error rather
+            than a mailbox verdict.
+          minimum: 0
+          type: integer
+        unique_domains:
+          description: Distinct mailbox domains represented in the batch.
+          minimum: 0
+          type: integer
+      required:
+      - errors
+      - found
+      - not_found
+      - total
+      - unique_domains
+      type: object
+    ClientBackgroundJobDetailResponse:
+      description: Background job detail plus paginated item results.
+      example:
+        results_expired: true
+        page: 5
+        total_pages: 2
+        job:
+          job_type: finder_batch
+          artifact_available: false
+          artifact_json_url: artifact_json_url
+          metadata:
+            key: ""
+          deadline_at: 2000-01-23T04:56:07.000+00:00
+          artifact_size_bytes: 4
+          not_found_count: 2
+          created_at: 2000-01-23T04:56:07.000+00:00
+          results_pruned_at: 2000-01-23T04:56:07.000+00:00
+          error_count: 7
+          scheduled_start_at: 2000-01-23T04:56:07.000+00:00
+          callback_url: callback_url
+          artifact_uploaded_at: 2000-01-23T04:56:07.000+00:00
+          updated_at: 2000-01-23T04:56:07.000+00:00
+          id: id
+          completed_count: 5
+          summary:
+            key: ""
+          reserved_amount_micros: 9
+          progress_percent: 2.027123
+          history_expires_at: 2000-01-23T04:56:07.000+00:00
+          callback_status: none
+          estimated_runtime_seconds: 0
+          success_count: 5
+          callback_last_error: callback_last_error
+          completed_at: 2000-01-23T04:56:07.000+00:00
+          callback_attempts: 6
+          actual_amount_micros: 3
+          started_at: 2000-01-23T04:56:07.000+00:00
+          requested_count: 1
+          status: queued
+        items:
+        - error_message: error_message
+          resolved_address: resolved_address
+          charge_micros: 6
+          request_type: finder
+          created_at: 2000-01-23T04:56:07.000+00:00
+          result:
+            key: ""
+          item_index: 0
+          input:
+            key: ""
+          completed_at: 2000-01-23T04:56:07.000+00:00
+          result_outcome: found
+          updated_at: 2000-01-23T04:56:07.000+00:00
+          provider: provider
+          started_at: 2000-01-23T04:56:07.000+00:00
+          id: id
+          result_state: result_state
+          status: queued
+        - error_message: error_message
+          resolved_address: resolved_address
+          charge_micros: 6
+          request_type: finder
+          created_at: 2000-01-23T04:56:07.000+00:00
+          result:
+            key: ""
+          item_index: 0
+          input:
+            key: ""
+          completed_at: 2000-01-23T04:56:07.000+00:00
+          result_outcome: found
+          updated_at: 2000-01-23T04:56:07.000+00:00
+          provider: provider
+          started_at: 2000-01-23T04:56:07.000+00:00
+          id: id
+          result_state: result_state
+          status: queued
+        total_items: 1
+        page_size: 5
+      properties:
+        job:
+          $ref: "#/components/schemas/ClientBackgroundJobResponse"
+        items:
+          items:
+            $ref: "#/components/schemas/ClientBackgroundJobItemResponse"
+          title: Items
+          type: array
+        total_items:
+          title: Total Items
+          type: integer
+        page:
+          title: Page
+          type: integer
+        page_size:
+          title: Page Size
+          type: integer
+        total_pages:
+          title: Total Pages
+          type: integer
+        results_expired:
+          description: Whether the stored item payload rows have already expired and
+            been pruned.
+          type: boolean
+      required:
+      - items
+      - job
+      - page
+      - page_size
+      - total_items
+      - total_pages
+      title: ClientBackgroundJobDetailResponse
+      type: object
+    ClientBackgroundJobItemResponse:
+      description: One item inside a background job payload.
+      example:
+        error_message: error_message
+        resolved_address: resolved_address
+        charge_micros: 6
+        request_type: finder
+        created_at: 2000-01-23T04:56:07.000+00:00
+        result:
+          key: ""
+        item_index: 0
+        input:
+          key: ""
+        completed_at: 2000-01-23T04:56:07.000+00:00
+        result_outcome: found
+        updated_at: 2000-01-23T04:56:07.000+00:00
+        provider: provider
+        started_at: 2000-01-23T04:56:07.000+00:00
+        id: id
+        result_state: result_state
+        status: queued
+      properties:
+        id:
+          title: Id
+          type: string
+        item_index:
+          title: Item Index
+          type: integer
+        status:
+          enum:
+          - queued
+          - processing
+          - completed
+          - error
+          - canceled
+          title: Status
+          type: string
+        request_type:
+          enum:
+          - finder
+          - probe
+          title: Request Type
+          type: string
+        input:
+          additionalProperties: true
+          description: Original submitted input for this item.
+          type: object
+        result:
+          additionalProperties: true
+          nullable: true
+          type: object
+        result_state:
+          nullable: true
+          type: string
+        result_outcome:
+          enum:
+          - found
+          - not_found
+          - error
+          nullable: true
+          type: string
+        resolved_address:
+          nullable: true
+          type: string
+        provider:
+          nullable: true
+          type: string
+        charge_micros:
+          default: 0
+          title: Charge Micros
+          type: integer
+        error_message:
+          nullable: true
+          type: string
+        started_at:
+          format: date-time
+          nullable: true
+          type: string
+        completed_at:
+          format: date-time
+          nullable: true
+          type: string
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        updated_at:
+          format: date-time
+          title: Updated At
+          type: string
+      required:
+      - created_at
+      - id
+      - input
+      - item_index
+      - request_type
+      - status
+      - updated_at
+      title: ClientBackgroundJobItemResponse
+      type: object
+    ClientBackgroundJobPageResponse:
+      description: Paginated list of background jobs for the authenticated user.
+      example:
+        total: 7
+        page: 1
+        total_pages: 1
+        items:
+        - job_type: finder_batch
+          artifact_available: false
+          artifact_json_url: artifact_json_url
+          metadata:
+            key: ""
+          deadline_at: 2000-01-23T04:56:07.000+00:00
+          artifact_size_bytes: 4
+          not_found_count: 2
+          created_at: 2000-01-23T04:56:07.000+00:00
+          results_pruned_at: 2000-01-23T04:56:07.000+00:00
+          error_count: 7
+          scheduled_start_at: 2000-01-23T04:56:07.000+00:00
+          callback_url: callback_url
+          artifact_uploaded_at: 2000-01-23T04:56:07.000+00:00
+          updated_at: 2000-01-23T04:56:07.000+00:00
+          id: id
+          completed_count: 5
+          summary:
+            key: ""
+          reserved_amount_micros: 9
+          progress_percent: 2.027123
+          history_expires_at: 2000-01-23T04:56:07.000+00:00
+          callback_status: none
+          estimated_runtime_seconds: 0
+          success_count: 5
+          callback_last_error: callback_last_error
+          completed_at: 2000-01-23T04:56:07.000+00:00
+          callback_attempts: 6
+          actual_amount_micros: 3
+          started_at: 2000-01-23T04:56:07.000+00:00
+          requested_count: 1
+          status: queued
+        - job_type: finder_batch
+          artifact_available: false
+          artifact_json_url: artifact_json_url
+          metadata:
+            key: ""
+          deadline_at: 2000-01-23T04:56:07.000+00:00
+          artifact_size_bytes: 4
+          not_found_count: 2
+          created_at: 2000-01-23T04:56:07.000+00:00
+          results_pruned_at: 2000-01-23T04:56:07.000+00:00
+          error_count: 7
+          scheduled_start_at: 2000-01-23T04:56:07.000+00:00
+          callback_url: callback_url
+          artifact_uploaded_at: 2000-01-23T04:56:07.000+00:00
+          updated_at: 2000-01-23T04:56:07.000+00:00
+          id: id
+          completed_count: 5
+          summary:
+            key: ""
+          reserved_amount_micros: 9
+          progress_percent: 2.027123
+          history_expires_at: 2000-01-23T04:56:07.000+00:00
+          callback_status: none
+          estimated_runtime_seconds: 0
+          success_count: 5
+          callback_last_error: callback_last_error
+          completed_at: 2000-01-23T04:56:07.000+00:00
+          callback_attempts: 6
+          actual_amount_micros: 3
+          started_at: 2000-01-23T04:56:07.000+00:00
+          requested_count: 1
+          status: queued
+        page_size: 1
+      properties:
+        items:
+          items:
+            $ref: "#/components/schemas/ClientBackgroundJobResponse"
+          title: Items
+          type: array
+        total:
+          title: Total
+          type: integer
+        page:
+          title: Page
+          type: integer
+        page_size:
+          title: Page Size
+          type: integer
+        total_pages:
+          title: Total Pages
+          type: integer
+      required:
+      - items
+      - page
+      - page_size
+      - total
+      - total_pages
+      title: ClientBackgroundJobPageResponse
+      type: object
+    ClientBackgroundJobResponse:
+      description: Background job status envelope returned by the public jobs API.
+      example:
+        job_type: finder_batch
+        artifact_available: false
+        artifact_json_url: artifact_json_url
+        metadata:
+          key: ""
+        deadline_at: 2000-01-23T04:56:07.000+00:00
+        artifact_size_bytes: 4
+        not_found_count: 2
+        created_at: 2000-01-23T04:56:07.000+00:00
+        results_pruned_at: 2000-01-23T04:56:07.000+00:00
+        error_count: 7
+        scheduled_start_at: 2000-01-23T04:56:07.000+00:00
+        callback_url: callback_url
+        artifact_uploaded_at: 2000-01-23T04:56:07.000+00:00
+        updated_at: 2000-01-23T04:56:07.000+00:00
+        id: id
+        completed_count: 5
+        summary:
+          key: ""
+        reserved_amount_micros: 9
+        progress_percent: 2.027123
+        history_expires_at: 2000-01-23T04:56:07.000+00:00
+        callback_status: none
+        estimated_runtime_seconds: 0
+        success_count: 5
+        callback_last_error: callback_last_error
+        completed_at: 2000-01-23T04:56:07.000+00:00
+        callback_attempts: 6
+        actual_amount_micros: 3
+        started_at: 2000-01-23T04:56:07.000+00:00
+        requested_count: 1
+        status: queued
+      properties:
+        id:
+          title: Id
+          type: string
+        job_type:
+          enum:
+          - finder_batch
+          - probe_batch
+          title: Job Type
+          type: string
+        status:
+          description: Current high-level job lifecycle state.
+          enum:
+          - queued
+          - processing
+          - completed
+          - failed
+          - canceled
+          type: string
+        deadline_at:
+          format: date-time
+          title: Deadline At
+          type: string
+        estimated_runtime_seconds:
+          title: Estimated Runtime Seconds
+          type: integer
+        scheduled_start_at:
+          format: date-time
+          title: Scheduled Start At
+          type: string
+        callback_url:
+          nullable: true
+          type: string
+        callback_status:
+          enum:
+          - none
+          - pending
+          - delivered
+          - failed
+          title: Callback Status
+          type: string
+        callback_attempts:
+          title: Callback Attempts
+          type: integer
+        callback_last_error:
+          nullable: true
+          type: string
+        requested_count:
+          description: Total number of submitted items for the job.
+          type: integer
+        completed_count:
+          title: Completed Count
+          type: integer
+        success_count:
+          title: Success Count
+          type: integer
+        not_found_count:
+          title: Not Found Count
+          type: integer
+        error_count:
+          title: Error Count
+          type: integer
+        reserved_amount_micros:
+          title: Reserved Amount Micros
+          type: integer
+        actual_amount_micros:
+          title: Actual Amount Micros
+          type: integer
+        progress_percent:
+          description: Approximate percent complete based on completed item count.
+          format: float
+          type: number
+        summary:
+          additionalProperties: true
+          description: Aggregated counts and provider stats for the job.
+          type: object
+        metadata:
+          additionalProperties: true
+          title: Metadata
+          type: object
+        started_at:
+          format: date-time
+          nullable: true
+          type: string
+        completed_at:
+          format: date-time
+          nullable: true
+          type: string
+        history_expires_at:
+          format: date-time
+          nullable: true
+          type: string
+        results_pruned_at:
+          format: date-time
+          nullable: true
+          type: string
+        artifact_available:
+          default: false
+          title: Artifact Available
+          type: boolean
+        artifact_json_url:
+          nullable: true
+          type: string
+        artifact_size_bytes:
+          nullable: true
+          type: integer
+        artifact_uploaded_at:
+          format: date-time
+          nullable: true
+          type: string
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        updated_at:
+          format: date-time
+          title: Updated At
+          type: string
+      required:
+      - actual_amount_micros
+      - callback_attempts
+      - callback_status
+      - completed_count
+      - created_at
+      - deadline_at
+      - error_count
+      - estimated_runtime_seconds
+      - id
+      - job_type
+      - not_found_count
+      - requested_count
+      - reserved_amount_micros
+      - scheduled_start_at
+      - status
+      - success_count
+      - updated_at
+      title: ClientBackgroundJobResponse
+      type: object
+    ClientBatchIdentityResponse:
+      description: Synchronous batch Probe response with compact per-item results
+        and a small summary block.
+      example:
+        summary:
+          unique_domains: 0
+          total: 0
+          found: 0
+          not_found: 0
+          errors: 0
+        results:
+        - mx_hosts:
+          - mx_hosts
+          - mx_hosts
+          address: address
+          is_alias: true
+          identity_providers:
+          - hostname: hostname
+            provider: okta
+          - hostname: hostname
+            provider: okta
+          alias:
+            original: original
+            resolved: resolved
+          state: deliverable
+          is_catchall: true
+          request_id: request_id
+          outcome: found
+        - mx_hosts:
+          - mx_hosts
+          - mx_hosts
+          address: address
+          is_alias: true
+          identity_providers:
+          - hostname: hostname
+            provider: okta
+          - hostname: hostname
+            provider: okta
+          alias:
+            original: original
+            resolved: resolved
+          state: deliverable
+          is_catchall: true
+          request_id: request_id
+          outcome: found
+      properties:
+        results:
+          description: Per-email compact probe results in request order.
+          items:
+            $ref: "#/components/schemas/ClientIdentityResponse"
+          type: array
+        summary:
+          $ref: "#/components/schemas/BatchSummary"
+      required:
+      - results
+      - summary
+      title: ClientBatchIdentityResponse
+      type: object
+    ClientFinderResponse:
+      description: Compact public result envelope used by Finder and Probe style responses.
+      example:
+        mx_hosts:
+        - mx_hosts
+        - mx_hosts
+        address: address
+        is_alias: true
+        identity_providers:
+        - hostname: hostname
+          provider: okta
+        - hostname: hostname
+          provider: okta
+        alias:
+          original: original
+          resolved: resolved
+        state: deliverable
+        is_catchall: true
+        request_id: request_id
+        outcome: found
+      properties:
+        state:
+          description: Final public deliverability verdict.
+          enum:
+          - deliverable
+          - undeliverable
+          type: string
+        outcome:
+          description: Operational outcome. `error` means the verification could not
+            complete cleanly and should not be treated as a negative mailbox verdict.
+          enum:
+          - found
+          - not_found
+          - error
+          type: string
+        address:
+          nullable: true
+          type: string
+        is_alias:
+          description: Whether the resolved address is an alias rather than a primary
+            mailbox.
+          type: boolean
+        alias:
+          $ref: "#/components/schemas/ClientFinderResponse_alias"
+        is_catchall:
+          description: Whether the mailbox domain behaved like a catch-all during
+            verification.
+          type: boolean
+        identity_providers:
+          description: Identity providers associated with the mailbox domain when
+            available.
+          items:
+            $ref: "#/components/schemas/IdentityProvider"
+          title: Identity Providers
+          type: array
+        mx_hosts:
+          description: Observed MX hosts for the mailbox domain.
+          items:
+            type: string
+          type: array
+        request_id:
+          nullable: true
+          type: string
+      required:
+      - state
+      title: ClientFinderResponse
+      type: object
+    ClientIdentityResponse:
+      description: Compact public result envelope used by Finder and Probe style responses.
+      example:
+        mx_hosts:
+        - mx_hosts
+        - mx_hosts
+        address: address
+        is_alias: true
+        identity_providers:
+        - hostname: hostname
+          provider: okta
+        - hostname: hostname
+          provider: okta
+        alias:
+          original: original
+          resolved: resolved
+        state: deliverable
+        is_catchall: true
+        request_id: request_id
+        outcome: found
+      properties:
+        state:
+          description: Final public deliverability verdict.
+          enum:
+          - deliverable
+          - undeliverable
+          type: string
+        outcome:
+          description: Operational outcome. `error` means the verification could not
+            complete cleanly and should not be treated as a negative mailbox verdict.
+          enum:
+          - found
+          - not_found
+          - error
+          type: string
+        address:
+          nullable: true
+          type: string
+        is_alias:
+          description: Whether the resolved address is an alias rather than a primary
+            mailbox.
+          type: boolean
+        alias:
+          $ref: "#/components/schemas/ClientFinderResponse_alias"
+        is_catchall:
+          description: Whether the mailbox domain behaved like a catch-all during
+            verification.
+          type: boolean
+        identity_providers:
+          description: Identity providers associated with the mailbox domain when
+            available.
+          items:
+            $ref: "#/components/schemas/IdentityProvider"
+          title: Identity Providers
+          type: array
+        mx_hosts:
+          description: Observed MX hosts for the mailbox domain.
+          items:
+            type: string
+          type: array
+        request_id:
+          nullable: true
+          type: string
+      required:
+      - state
+      title: ClientIdentityResponse
+      type: object
+    ClientRequestHistoryItem:
+      description: One completed direct request visible in the user's request history.
+      example:
+        input_email: input_email
+        mx_hosts:
+        - mx_hosts
+        - mx_hosts
+        resolved_address: resolved_address
+        metadata:
+          key: ""
+        request_type: finder
+        input_name: input_name
+        created_at: 2000-01-23T04:56:07.000+00:00
+        is_catchall: false
+        input_domain: input_domain
+        duration_ms: 0
+        provider: provider
+        is_alias: false
+        identity_providers:
+        - key: ""
+        - key: ""
+        id: id
+        input_label: input_label
+        state: deliverable
+        request_id: request_id
+        outcome: found
+      properties:
+        id:
+          title: Id
+          type: string
+        request_type:
+          enum:
+          - finder
+          - probe
+          title: Request Type
+          type: string
+        input_name:
+          nullable: true
+          type: string
+        input_domain:
+          nullable: true
+          type: string
+        input_email:
+          nullable: true
+          type: string
+        input_label:
+          description: Compact human-readable identifier for the original request
+            input.
+          type: string
+        state:
+          enum:
+          - deliverable
+          - undeliverable
+          title: State
+          type: string
+        outcome:
+          enum:
+          - found
+          - not_found
+          - error
+          title: Outcome
+          type: string
+        resolved_address:
+          nullable: true
+          type: string
+        duration_ms:
+          nullable: true
+          type: integer
+        provider:
+          nullable: true
+          type: string
+        identity_providers:
+          items:
+            additionalProperties: true
+            type: object
+          title: Identity Providers
+          type: array
+        mx_hosts:
+          items:
+            type: string
+          title: Mx Hosts
+          type: array
+        metadata:
+          additionalProperties: true
+          description: Small transport and outcome metadata associated with the request.
+          type: object
+        is_alias:
+          default: false
+          title: Is Alias
+          type: boolean
+        is_catchall:
+          default: false
+          title: Is Catchall
+          type: boolean
+        request_id:
+          nullable: true
+          type: string
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+      required:
+      - created_at
+      - id
+      - input_label
+      - outcome
+      - request_type
+      - state
+      title: ClientRequestHistoryItem
+      type: object
+    ClientRequestHistoryPageResponse:
+      description: Paginated request history result.
+      example:
+        total: 6
+        page: 1
+        total_pages: 5
+        items:
+        - input_email: input_email
+          mx_hosts:
+          - mx_hosts
+          - mx_hosts
+          resolved_address: resolved_address
+          metadata:
+            key: ""
+          request_type: finder
+          input_name: input_name
+          created_at: 2000-01-23T04:56:07.000+00:00
+          is_catchall: false
+          input_domain: input_domain
+          duration_ms: 0
+          provider: provider
+          is_alias: false
+          identity_providers:
+          - key: ""
+          - key: ""
+          id: id
+          input_label: input_label
+          state: deliverable
+          request_id: request_id
+          outcome: found
+        - input_email: input_email
+          mx_hosts:
+          - mx_hosts
+          - mx_hosts
+          resolved_address: resolved_address
+          metadata:
+            key: ""
+          request_type: finder
+          input_name: input_name
+          created_at: 2000-01-23T04:56:07.000+00:00
+          is_catchall: false
+          input_domain: input_domain
+          duration_ms: 0
+          provider: provider
+          is_alias: false
+          identity_providers:
+          - key: ""
+          - key: ""
+          id: id
+          input_label: input_label
+          state: deliverable
+          request_id: request_id
+          outcome: found
+        page_size: 5
+      properties:
+        items:
+          items:
+            $ref: "#/components/schemas/ClientRequestHistoryItem"
+          title: Items
+          type: array
+        total:
+          title: Total
+          type: integer
+        page:
+          title: Page
+          type: integer
+        page_size:
+          title: Page Size
+          type: integer
+        total_pages:
+          title: Total Pages
+          type: integer
+      required:
+      - items
+      - page
+      - page_size
+      - total
+      - total_pages
+      title: ClientRequestHistoryPageResponse
+      type: object
+    ClientTokenStatusResponse:
+      description: Current bearer token claims as seen by the API.
+      example:
+        valid: true
+        expires_in_seconds: 0
+        expires_at: 2000-01-23T04:56:07.000+00:00
+        user_id: user_id
+        scopes:
+        - scopes
+        - scopes
+        token_type: pat
+      properties:
+        valid:
+          description: Whether the current bearer token is valid for this request.
+          type: boolean
+        user_id:
+          description: User id associated with the bearer token.
+          type: string
+        token_type:
+          description: How the bearer token was issued.
+          enum:
+          - pat
+          - oauth
+          type: string
+        scopes:
+          description: Scopes currently attached to the bearer token.
+          items:
+            type: string
+          type: array
+        expires_at:
+          format: date-time
+          nullable: true
+          type: string
+        expires_in_seconds:
+          nullable: true
+          type: integer
+      required:
+      - token_type
+      - user_id
+      title: ClientTokenStatusResponse
+      type: object
+    ClientUsageResponse:
+      description: "Current authenticated account usage, free-tier windows, and paid\
+        \ balance snapshot."
+      example:
+        free_window_hours: 6
+        billing_cycle_value_micros: 9
+        billing_mode: billing_mode
+        window_requests_used: 5
+        weekly_requests_remaining: 7
+        window_requests_remaining: 2
+        plan_tier: plan_tier
+        current_plan_probe_cost_micros: 6
+        billing_value_micros_remaining: 7
+        billing_value_micros_used: 2
+        weekly_requests_used: 5
+        free_weekly_limit: 1
+        billing_status: billing_status
+        free_window_limit: 0
+        billing_value_micros_reserved: 4
+        current_plan_finder_deliverable_cost_micros: 1
+        usage_percent_remaining: 1.2315135367772556
+        current_plan_finder_undeliverable_cost_micros: 1
+        billing_extra_value_micros: 3
+      properties:
+        plan_tier:
+          description: "Current plan family, such as free or paid."
+          type: string
+        billing_mode:
+          title: Billing Mode
+          type: string
+        billing_status:
+          nullable: true
+          type: string
+        free_window_limit:
+          title: Free Window Limit
+          type: integer
+        free_window_hours:
+          title: Free Window Hours
+          type: integer
+        free_weekly_limit:
+          title: Free Weekly Limit
+          type: integer
+        window_requests_used:
+          title: Window Requests Used
+          type: integer
+        weekly_requests_used:
+          title: Weekly Requests Used
+          type: integer
+        window_requests_remaining:
+          title: Window Requests Remaining
+          type: integer
+        weekly_requests_remaining:
+          title: Weekly Requests Remaining
+          type: integer
+        billing_cycle_value_micros:
+          nullable: true
+          type: integer
+        billing_extra_value_micros:
+          title: Billing Extra Value Micros
+          type: integer
+        billing_value_micros_used:
+          title: Billing Value Micros Used
+          type: integer
+        billing_value_micros_reserved:
+          description: Paid usage value currently reserved by queued or running background
+            jobs.
+          type: integer
+        billing_value_micros_remaining:
+          nullable: true
+          type: integer
+        usage_percent_remaining:
+          nullable: true
+          type: number
+        current_plan_finder_deliverable_cost_micros:
+          nullable: true
+          type: integer
+        current_plan_finder_undeliverable_cost_micros:
+          nullable: true
+          type: integer
+        current_plan_probe_cost_micros:
+          nullable: true
+          type: integer
+      required:
+      - billing_extra_value_micros
+      - billing_mode
+      - billing_value_micros_used
+      - free_weekly_limit
+      - free_window_hours
+      - free_window_limit
+      - plan_tier
+      - weekly_requests_remaining
+      - weekly_requests_used
+      - window_requests_remaining
+      - window_requests_used
+      title: ClientUsageResponse
+      type: object
+    ErrorResponse:
+      additionalProperties: false
+      example:
+        retry_after_seconds: 6
+        detail: detail
+        error: error
+        message: message
+      properties:
+        error:
+          description: Stable machine-readable error key.
+          type: string
+        message:
+          description: Human-friendly error summary safe to show to an operator or
+            end user.
+          type: string
+        detail:
+          description: Optional raw backend detail when available.
+          type: string
+        retry_after_seconds:
+          nullable: true
+          type: integer
+      type: object
+    FinderBatchJobRequest:
+      additionalProperties: false
+      description: Queue a background Finder workload that can wait for capacity and
+        complete asynchronously.
+      example:
+        callback_url: https://openapi-generator.tech
+        inputs:
+        - full_name: Jane Doe
+          email_domain: acme.com
+        - full_name: Jane Doe
+          email_domain: acme.com
+        - full_name: Jane Doe
+          email_domain: acme.com
+        - full_name: Jane Doe
+          email_domain: acme.com
+        - full_name: Jane Doe
+          email_domain: acme.com
+        deadline: 2027-01-02T00:00:00Z
+      properties:
+        deadline:
+          description: "Optional hard deadline for the job. Omit it to start as soon\
+            \ as capacity allows. If provided, the API returns 422 when the deadline\
+            \ is too tight even with immediate execution."
+          example: 2027-01-02T00:00:00Z
+          format: date-time
+          type: string
+        callback_url:
+          format: uri
+          nullable: true
+          type: string
+        inputs:
+          description: One or more Finder-style inputs that will be processed asynchronously.
+          items:
+            $ref: "#/components/schemas/FinderBatchJobRequest_inputs_inner"
+          maxItems: 100
+          minItems: 1
+          type: array
+      required:
+      - inputs
+      type: object
+    FinderRequest:
+      additionalProperties: false
+      description: Resolve the most likely verified work email for one person at one
+        company domain.
+      example:
+        full_name: Jane Doe
+        email_domain: acme.com
+      properties:
+        full_name:
+          description: The real person's full name. Include middle names or initials
+            when known.
+          example: Jane Doe
+          type: string
+        email_domain:
+          description: The company's public website or mailbox domain.
+          example: acme.com
+          type: string
+      required:
+      - email_domain
+      - full_name
+      type: object
+    HTTPValidationError:
+      example:
+        detail:
+        - msg: msg
+          loc:
+          - Location_inner
+          - Location_inner
+          input: ""
+          ctx: "{}"
+          type: type
+        - msg: msg
+          loc:
+          - Location_inner
+          - Location_inner
+          input: ""
+          ctx: "{}"
+          type: type
+      properties:
+        detail:
+          items:
+            $ref: "#/components/schemas/ValidationError"
+          title: Detail
+          type: array
+      title: HTTPValidationError
+      type: object
+    IdentityProvider:
+      additionalProperties: false
+      example:
+        hostname: hostname
+        provider: okta
+      properties:
+        provider:
+          example: okta
+          type: string
+        hostname:
+          nullable: true
+          type: string
+      type: object
+    ProbeBatchJobBackgroundRequest:
+      additionalProperties: false
+      description: Queue a background Probe Batch workload that can wait for capacity
+        and complete asynchronously.
+      example:
+        callback_url: https://openapi-generator.tech
+        emails:
+        - jane.doe@acme.com
+        - john.smith@acme.com
+        deadline: 2027-01-02T00:00:00Z
+      properties:
+        deadline:
+          description: "Optional hard deadline for the job. Omit it to start as soon\
+            \ as capacity allows. If provided, the API returns 422 when the deadline\
+            \ is too tight even with immediate execution."
+          example: 2027-01-02T00:00:00Z
+          format: date-time
+          type: string
+        callback_url:
+          format: uri
+          nullable: true
+          type: string
+        emails:
+          description: One or more exact mailbox addresses to verify asynchronously.
+          example:
+          - jane.doe@acme.com
+          - john.smith@acme.com
+          items:
+            format: email
+            type: string
+          maxItems: 100
+          minItems: 1
+          type: array
+      required:
+      - emails
+      type: object
+    ProbeBatchRequest:
+      additionalProperties: false
+      description: Verify many known email addresses synchronously and receive compact
+        per-item results.
+      example:
+        emails:
+        - jane.doe@acme.com
+        - john.smith@acme.com
+      properties:
+        emails:
+          description: One or more exact mailbox addresses to verify.
+          example:
+          - jane.doe@acme.com
+          - john.smith@acme.com
+          items:
+            format: email
+            type: string
+          maxItems: 100
+          minItems: 1
+          type: array
+      required:
+      - emails
+      type: object
+    ProbeRequest:
+      additionalProperties: false
+      description: Verify one known email address directly.
+      example:
+        email: jane.doe@acme.com
+      properties:
+        email:
+          description: The email address you want to verify.
+          example: jane.doe@acme.com
+          format: email
+          type: string
+      required:
+      - email
+      type: object
+    ValidationError:
+      example:
+        msg: msg
+        loc:
+        - Location_inner
+        - Location_inner
+        input: ""
+        ctx: "{}"
+        type: type
+      properties:
+        loc:
+          items:
+            $ref: "#/components/schemas/Location_inner"
+          title: Location
+          type: array
+        msg:
+          title: Message
+          type: string
+        type:
+          title: Error Type
+          type: string
+        input:
+          title: Input
+        ctx:
+          title: Context
+          type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+      type: object
+    ClientFinderResponse_alias:
+      anyOf:
+      - $ref: "#/components/schemas/AliasInfo"
+      - additionalProperties: true
+        type: object
+      description: Alias metadata when `is_alias=true`.
+    FinderBatchJobRequest_inputs_inner:
+      additionalProperties: false
+      example:
+        full_name: Jane Doe
+        email_domain: acme.com
+      properties:
+        full_name:
+          description: The real person's full name.
+          example: Jane Doe
+          type: string
+        email_domain:
+          description: The company website or mailbox domain.
+          example: acme.com
+          type: string
+      required:
+      - email_domain
+      - full_name
+      type: object
+    Location_inner:
+      anyOf:
+      - type: string
+      - type: integer
+  securitySchemes:
+    bearerAuth:
+      bearerFormat: PAT
+      description: "Use a Personal Access Token generated in the dashboard. Send it\
+        \ as Authorization: Bearer relid_pat_..."
+      scheme: bearer
+      type: http
